@@ -1,8 +1,7 @@
-import type { NextConfig } from 'next';
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  // keep your other config options (like images.remotePatterns) here
+  /* other configs if any, without output: 'standalone' */
 };
 
 export default nextConfig;
