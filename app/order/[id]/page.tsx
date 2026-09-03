@@ -5,14 +5,24 @@ import { notFound } from "next/navigation";
 export default async function OrderSuccessPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }> | { id: string };
 }) {
-  const order = await prisma.order.findUnique({
-    where: { id: params.id },
-    include: {
-      items: true,
-    },
-  });
+  // Await params safely to support both Next.js 14 and Next.js 15+
+  const resolvedParams = await Promise.resolve(params);
+  const orderId = resolvedParams?.id;
+
+  if (!orderId) {
+    notFound();
+  }
+
+  let order;
+  try {
+    order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+  } catch (error) {
+    console.error("Error fetching order:", error);
+  }
 
   if (!order) {
     notFound();
@@ -46,9 +56,9 @@ export default async function OrderSuccessPage({
           </span>
         </div>
         <div className="flex justify-between pt-1">
-          <span className="font-semibold">Total Paid</span>
+          <span className="font-semibold">Total</span>
           <span className="font-bold text-lg">
-            ${Number(order.totalAmount).toFixed(2)}
+            ${Number(order.totalAmount || 0).toFixed(2)}
           </span>
         </div>
       </div>
