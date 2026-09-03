@@ -21,12 +21,23 @@ model Product {
 }
 
 model Order {
-  id          String      @id @default(uuid())
-  totalAmount Float
-  status      String      @default("COMPLETED") // PENDING, COMPLETED, CANCELLED
-  customer    String      @default("Guest Customer")
-  createdAt   DateTime    @default(now())
-  items       OrderItem[]
+  id              String      @id @default(cuid())
+  createdAt       DateTime    @default(now())
+  totalAmount     Decimal
+  status          String      @default("PENDING")
+  
+  // Notice the question marks '?' — this makes them optional
+  customerName    String?
+  customerEmail   String?
+  customerPhone   String?
+
+  streetAddress   String?
+  city            String?
+  state           String?
+  postalCode      String?
+  country         String?     @default("India")
+
+  items           OrderItem[]
 }
 
 model OrderItem {
