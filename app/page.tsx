@@ -3,7 +3,23 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, Trash2, Plus, Minus, X, CheckCircle2, Search, SlidersHorizontal, Loader2 } from 'lucide-react';
+import {
+  SignInButton,
+  SignUpButton,
+  UserButton,
+  useUser,
+} from '@clerk/nextjs';
+import {
+  ShoppingBag,
+  Trash2,
+  Plus,
+  Minus,
+  X,
+  CheckCircle2,
+  Search,
+  SlidersHorizontal,
+  Loader2,
+} from 'lucide-react';
 import { useCartStore } from '@/lib/cartStore';
 
 interface Product {
@@ -21,6 +37,7 @@ const CATEGORIES = ['All', 'Peripherals', 'Audio', 'Displays'];
 
 export default function Storefront() {
   const router = useRouter();
+  const { user, isSignedIn } = useUser();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,8 +47,15 @@ export default function Storefront() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const { cart, addToCart, removeFromCart, updateQuantity, clearCart, totalItems, totalAmount } =
-    useCartStore();
+  const {
+    cart,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    totalItems,
+    totalAmount,
+  } = useCartStore();
 
   useEffect(() => {
     async function loadProducts() {
@@ -50,7 +74,8 @@ export default function Storefront() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((item) => {
-      const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+      const matchesCategory =
+        selectedCategory === 'All' || item.category === selectedCategory;
       const matchesSearch =
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -72,7 +97,11 @@ export default function Storefront() {
             price: i.price,
             quantity: i.quantity,
           })),
-          customer: 'Guest Shopper',
+          userId: user?.id || null,
+          customerName: user
+            ? user.fullName || user.username || 'Shopper'
+            : 'Guest Shopper',
+          customerEmail: user?.primaryEmailAddress?.emailAddress || null,
         }),
       });
 
@@ -85,15 +114,15 @@ export default function Storefront() {
       const orderData = await res.json();
       setCheckoutSuccess(true);
 
-      // Refresh product list to show decremented stock
+      // Refresh product list to reflect updated stock
       const refreshed = await fetch('/api/products').then((r) => r.json());
       if (Array.isArray(refreshed)) setProducts(refreshed);
 
-      // Clear the Zustand cart & close drawer
+      // Clear the cart and close drawer
       clearCart();
       setIsDrawerOpen(false);
 
-      // Redirect user directly to their dedicated order receipt page
+      // Navigate to order confirmation
       router.push(`/order/${orderData.id}`);
     } catch (err) {
       console.error(err);
@@ -105,15 +134,18 @@ export default function Storefront() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
+      {/* Header */}
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          {/* Brand Logo */}
+          <Link href="/" className="flex items-center gap-2">
             <span className="h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-lg">
               A
             </span>
             <span className="font-bold text-xl tracking-tight">ApexStore</span>
-          </div>
+          </Link>
 
+          {/* Unified Right Actions */}
           <div className="flex items-center gap-3">
             <Link
               href="/admin"
@@ -134,10 +166,35 @@ export default function Storefront() {
                 </span>
               )}
             </button>
+
+            {/* Auth Buttons */}
+            {!isSignedIn ? (
+              <>
+                <SignInButton mode="modal">
+                  <button className="text-xs font-semibold px-3 py-1.5 text-slate-700 hover:text-slate-950 transition">
+                    Sign In
+                  </button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <button className="text-xs font-semibold px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition shadow-sm">
+                    Sign Up
+                  </button>
+                </SignUpButton>
+              </>
+            ) : (
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: 'w-8 h-8 rounded-full border border-slate-200 shadow-sm',
+                  },
+                }}
+              />
+            )}
           </div>
         </div>
       </header>
 
+      {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-10">
         <div className="mb-8 text-center max-w-xl mx-auto">
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl text-slate-950">
@@ -194,7 +251,10 @@ export default function Storefront() {
                 key={product.id}
                 className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition"
               >
-                <Link href={`/product/${product.id}`} className="aspect-square relative bg-slate-100 overflow-hidden block">
+                <Link
+                  href={`/product/${product.id}`}
+                  className="aspect-square relative bg-slate-100 overflow-hidden block"
+                >
                   <img
                     src={product.image}
                     alt={product.name}
@@ -208,11 +268,15 @@ export default function Storefront() {
                       {product.category}
                     </span>
                     <Link href={`/product/${product.id}`}>
-                      <h3 className="font-semibold text-slate-900 mt-1 hover:underline">{product.name}</h3>
+                      <h3 className="font-semibold text-slate-900 mt-1 hover:underline">
+                        {product.name}
+                      </h3>
                     </Link>
                   </div>
                   <div className="mt-4 flex items-center justify-between">
-                    <span className="text-lg font-bold text-slate-900">${product.price}</span>
+                    <span className="text-lg font-bold text-slate-900">
+                      ${product.price}
+                    </span>
                     <button
                       onClick={() => addToCart(product)}
                       className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition"
@@ -249,21 +313,36 @@ export default function Storefront() {
                 </div>
               ) : (
                 cart.map((item) => (
-                  <div key={item.id} className="flex gap-4 items-center border-b border-slate-50 pb-3">
-                    <img src={item.image} alt={item.name} className="w-16 h-16 rounded-md object-cover bg-slate-100" />
+                  <div
+                    key={item.id}
+                    className="flex gap-4 items-center border-b border-slate-50 pb-3"
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-16 h-16 rounded-md object-cover bg-slate-100"
+                    />
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-slate-900 truncate">{item.name}</h4>
+                      <h4 className="text-sm font-medium text-slate-900 truncate">
+                        {item.name}
+                      </h4>
                       <p className="text-sm text-slate-500">${item.price}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() =>
+                            updateQuantity(item.id, item.quantity - 1)
+                          }
                           className="p-1 rounded bg-slate-100 hover:bg-slate-200"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="text-xs font-semibold px-1">{item.quantity}</span>
+                        <span className="text-xs font-semibold px-1">
+                          {item.quantity}
+                        </span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() =>
+                            updateQuantity(item.id, item.quantity + 1)
+                          }
                           className="p-1 rounded bg-slate-100 hover:bg-slate-200"
                         >
                           <Plus className="w-3 h-3" />
@@ -300,7 +379,8 @@ export default function Storefront() {
                   >
                     {checkingOut ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" /> Processing Order...
+                        <Loader2 className="w-4 h-4 animate-spin" /> Processing
+                        Order...
                       </>
                     ) : (
                       'Proceed to Checkout'
