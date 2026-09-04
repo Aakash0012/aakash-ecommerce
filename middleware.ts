@@ -1,27 +1,18 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+// /admin aur uske saare sub-pages ko protect karega
+const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 
-  // Allow requests to the login page and auth API to pass through
-  if (pathname === '/admin/login' || pathname.startsWith('/api/admin-auth')) {
-    return NextResponse.next();
+export default clerkMiddleware(async (auth, req) => {
+  if (isAdminRoute(req)) {
+    await auth.protect();
   }
-
-  // Protect all other /admin routes
-  if (pathname.startsWith('/admin')) {
-    const adminToken = request.cookies.get('admin_token')?.value;
-
-    if (adminToken !== 'authenticated') {
-      const loginUrl = new URL('/admin/login', request.url);
-      return NextResponse.redirect(loginUrl);
-    }
-  }
-
-  return NextResponse.next();
-}
+});
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: [
+    // Next.js ke static assets ko chhodkar baki routes scan karega
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+  ],
 };

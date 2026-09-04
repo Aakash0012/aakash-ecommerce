@@ -21,23 +21,24 @@ model Product {
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  createdAt       DateTime    @default(now())
-  totalAmount     Decimal
-  status          String      @default("PENDING")
-  
-  // Notice the question marks '?' — this makes them optional
-  customerName    String?
-  customerEmail   String?
-  customerPhone   String?
+  id            String      @id @default(cuid())
+  createdAt     DateTime    @default(now())
+  totalAmount   Decimal
+  status        String      @default("PENDING")
 
-  streetAddress   String?
-  city            String?
-  state           String?
-  postalCode      String?
-  country         String?     @default("India")
+  // Add these two lines to connect orders to users:
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
 
-  items           OrderItem[]
+  // Keep all your existing customer fields and relations below as they are:
+  customerName  String?
+  customerEmail String?
+  customerPhone String?
+  streetAddress String?
+  city          String?
+  state         String?
+  postalCode    String?
+  items         OrderItem[]
 }
 
 model OrderItem {
@@ -49,4 +50,19 @@ model OrderItem {
 
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product   Product  @relation(fields: [productId], references: [id])
+}
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  orders        Order[]
 }
