@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useUser } from '@clerk/nextjs';
 import { ArrowLeft, Plus, Trash2, Loader2, Package, RefreshCw, ShoppingCart, DollarSign, Boxes, AlertTriangle } from 'lucide-react';
 
 interface OrderItemRecord {
@@ -35,6 +36,8 @@ interface Product {
 }
 
 export default function AdminPage() {
+  const { isLoaded, isSignedIn, user } = useUser();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +52,10 @@ export default function AdminPage() {
   const [stock, setStock] = useState('10');
   const [description, setDescription] = useState('');
   const [features, setFeatures] = useState('');
+
+  // Allowed admin emails list
+  const adminEmails = ['gear2915@gmail.com'];
+  const userEmail = user?.primaryEmailAddress?.emailAddress;
 
   const loadData = async () => {
     try {
@@ -71,8 +78,42 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (isLoaded && isSignedIn && userEmail && adminEmails.includes(userEmail)) {
+      loadData();
+    }
+  }, [isLoaded, isSignedIn, userEmail]);
+
+  // Handle loading state
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500">
+        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  // Block unauthorized users
+  if (!isSignedIn || !userEmail || !adminEmails.includes(userEmail)) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-slate-900 px-4">
+        <div className="max-w-md w-full bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center space-y-4">
+          <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
+            ✕
+          </div>
+          <h1 className="text-xl font-bold text-slate-900">Access Denied</h1>
+          <p className="text-sm text-slate-500">
+            You are signed in as <span className="font-semibold text-slate-700">{userEmail || 'Guest'}</span>, which does not have administrative privileges.
+          </p>
+          <Link
+            href="/"
+            className="inline-block px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition"
+          >
+            Return to Storefront
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
