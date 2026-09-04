@@ -18,9 +18,9 @@ interface OrderRecord {
   id: string;
   totalAmount: number;
   status: string;
-  customer: string;
+  customer?: string;
   createdAt: string;
-  items: OrderItemRecord[];
+  items?: OrderItemRecord[];
 }
 
 interface Product {
@@ -89,10 +89,10 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          price,
+          price: parseFloat(price) || 0,
           category,
           image: image || 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=600&auto=format&fit=crop&q=80',
-          stock,
+          stock: parseInt(stock, 10) || 0,
           description: description || 'Workspace gear provisioned via Admin Console.',
           features: parsedFeatures.length > 0 ? parsedFeatures : ['Standard warranty'],
         }),
@@ -127,11 +127,11 @@ export default function AdminPage() {
     }
   };
 
-  // Metrics
-  const totalCatalogValue = products.reduce((acc, p) => acc + p.price * p.stock, 0);
-  const totalUnits = products.reduce((acc, p) => acc + p.stock, 0);
-  const lowStockCount = products.filter((p) => p.stock <= 5).length;
-  const totalRevenue = orders.reduce((acc, o) => acc + o.totalAmount, 0);
+  // Metrics with safe type casting
+  const totalCatalogValue = products.reduce((acc, p) => acc + (Number(p.price) || 0) * (Number(p.stock) || 0), 0);
+  const totalUnits = products.reduce((acc, p) => acc + (Number(p.stock) || 0), 0);
+  const lowStockCount = products.filter((p) => (Number(p.stock) || 0) <= 5).length;
+  const totalRevenue = orders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 py-10 px-4">
@@ -169,7 +169,7 @@ export default function AdminPage() {
               <span>Total Revenue</span>
               <DollarSign className="w-4 h-4 text-emerald-600" />
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-2">${totalRevenue.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-slate-900 mt-2">${Number(totalRevenue || 0).toFixed(2)}</p>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -177,7 +177,7 @@ export default function AdminPage() {
               <span>Inventory Value</span>
               <Boxes className="w-4 h-4 text-blue-600" />
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-2">${totalCatalogValue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-slate-900 mt-2">${Number(totalCatalogValue || 0).toLocaleString()}</p>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -345,10 +345,10 @@ export default function AdminPage() {
                           <span className="font-semibold text-slate-900 truncate max-w-[180px]">{item.name}</span>
                         </td>
                         <td className="px-4 py-3.5 text-xs text-slate-500">{item.category}</td>
-                        <td className="px-4 py-3.5 font-semibold text-slate-900">${item.price.toFixed(2)}</td>
+                        <td className="px-4 py-3.5 font-semibold text-slate-900">${Number(item.price || 0).toFixed(2)}</td>
                         <td className="px-4 py-3.5">
                           <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                            item.stock <= 3 ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-slate-100 text-slate-700'
+                            (Number(item.stock) || 0) <= 3 ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-slate-100 text-slate-700'
                           }`}>
                             {item.stock} left
                           </span>
@@ -394,24 +394,30 @@ export default function AdminPage() {
                           {order.status}
                         </span>
                         <span className="text-base font-bold text-slate-900">
-                          ${order.totalAmount.toFixed(2)}
+                          ${Number(order.totalAmount || 0).toFixed(2)}
                         </span>
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      {order.items.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between text-xs text-slate-700">
-                          <div className="flex items-center gap-2">
-                            <img src={item.product?.image} alt="" className="w-7 h-7 rounded object-cover bg-slate-200" />
-                            <span className="font-medium">{item.product?.name}</span>
-                            <span className="text-slate-400">&times; {item.quantity}</span>
+                      {order.items && order.items.length > 0 ? (
+                        order.items.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between text-xs text-slate-700">
+                            <div className="flex items-center gap-2">
+                              {item.product?.image && (
+                                <img src={item.product.image} alt="" className="w-7 h-7 rounded object-cover bg-slate-200" />
+                              )}
+                              <span className="font-medium">{item.product?.name || 'Item'}</span>
+                              <span className="text-slate-400">&times; {item.quantity}</span>
+                            </div>
+                            <span className="font-semibold text-slate-900">
+                              ${((Number(item.price) || 0) * (Number(item.quantity) || 1)).toFixed(2)}
+                            </span>
                           </div>
-                          <span className="font-semibold text-slate-900">
-                            ${(item.price * item.quantity).toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No line items recorded</p>
+                      )}
                     </div>
                   </div>
                 ))}
