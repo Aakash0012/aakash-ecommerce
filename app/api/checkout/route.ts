@@ -10,12 +10,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
-    // Calculate total from items if body.total or body.totalAmount is not passed
+    // Auto-calculate if total wasn't provided
     const computedTotal = items.reduce(
       (sum: number, item: any) => sum + Number(item.price || 0) * (item.quantity || 1),
       0
     );
-
     const finalAmount = body.totalAmount ?? body.total ?? computedTotal;
 
     const order = await prisma.order.create({
@@ -38,7 +37,13 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ orderId: order.id });
+    // Return both orderId and id so whatever property the frontend reads will succeed
+    return NextResponse.json({
+      success: true,
+      id: order.id,
+      orderId: order.id,
+      order: order,
+    });
   } catch (error) {
     console.error("Checkout error:", error);
     return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
